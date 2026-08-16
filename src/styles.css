@@ -1,0 +1,1069 @@
+/*
+ * THE CORE — the TRIGA room, 1968.
+ *
+ * A university reactor hall is not an industrial cathedral. It is a bright room
+ * with a pool in it: pale institutional green enamel, oak trim, daylight through
+ * high windows, and one desk of instruments. That is the palette, and it is the
+ * reason this variant is built first — it is the most beautiful frame available
+ * and the only one where the blue glow is honestly visible.
+ *
+ * Rule from PLAN.md §2.5: the instruments are the page furniture. Type sits ON
+ * panel surfaces, not floating over a canvas.
+ */
+
+:root {
+  /* Room */
+  --enamel: #d8dcd0;
+  --enamel-dark: #c3c9ba;
+  --enamel-deep: #a9b19f;
+  --oak: #9a7247;
+  --oak-dark: #6f5231;
+  --ink: #23281f;
+  --ink-dim: #5d6555;
+
+  /* Instrument faces — warmer and lighter than the panel around them */
+  --face: #ece9dc;
+  --face-edge: #b4ad96;
+  --bezel: #8e9384;
+
+  /* One accent, taken from the hardware itself: the pool. */
+  --accent: #0f6ea8;
+  --accent-glow: #4db4ff;
+  --alarm: #b3341c;
+  --live: #1d7a3e;
+
+  /* Strip-chart paper and pen */
+  --chart-paper: #f3f0e4;
+  --chart-grid: rgba(120, 110, 80, 0.22);
+  --chart-ink: #8a2f1c;
+
+  --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+
+  color-scheme: light;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: var(--sans);
+  color: var(--ink);
+  /* Daylight falling across enamel, not a flat fill. */
+  background:
+    radial-gradient(70rem 46rem at 28% 8%, rgba(255, 255, 246, 0.85) 0%, rgba(255, 255, 246, 0) 62%),
+    radial-gradient(60rem 50rem at 92% 96%, rgba(120, 132, 108, 0.28) 0%, rgba(120, 132, 108, 0) 58%),
+    var(--enamel);
+  background-attachment: fixed;
+}
+
+/* Every number is an instrument reading: tabular, so digits do not reflow as
+   they change. A readout that shifts width reads as a web page, not a machine. */
+.readout-value,
+.bar-value,
+.chart-note,
+.plate-meta {
+  font-variant-numeric: tabular-nums;
+}
+
+.room {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1rem, 2.5vw, 2rem);
+  gap: clamp(1rem, 2vw, 1.5rem);
+  max-width: 1680px;
+  margin: 0 auto;
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────────── */
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.9rem;
+  border-bottom: 2px solid var(--oak-dark);
+}
+
+.masthead-title h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  line-height: 1;
+}
+.masthead-title p {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* An engraved lamacoid plate, which is how every panel in a plant is labelled. */
+.masthead-plate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.95rem;
+  background: linear-gradient(var(--face), #e0dccb);
+  border: 1px solid var(--face-edge);
+  border-left: 3px solid var(--oak);
+  box-shadow: 0 1px 2px rgba(60, 55, 40, 0.18);
+  text-align: right;
+}
+.plate-name { font-size: 0.9rem; font-weight: 700; letter-spacing: 0.08em; }
+.plate-meta { font-size: 0.7rem; letter-spacing: 0.09em; color: var(--ink-dim); }
+.plate-sig {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin-top: 0.2rem;
+  max-width: 34ch;
+}
+
+/* ── Console layout ───────────────────────────────────────────────────── */
+.console {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.85fr);
+  gap: clamp(0.9rem, 1.8vw, 1.4rem);
+  align-items: start;
+  flex: 1;
+}
+
+.console-window { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.console-side { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+
+/* The window onto the pool. A steel frame set into the panel, not a floating
+   canvas — the reactor is SEEN, not presented. */
+.window-frame {
+  position: relative;
+  border: 1px solid var(--bezel);
+  border-radius: 2px;
+  background: #0c1a24;
+  box-shadow:
+    inset 0 0 0 4px #6e7466,
+    inset 0 0 0 5px #4c5247,
+    0 4px 14px rgba(40, 44, 34, 0.28);
+  overflow: hidden;
+}
+
+/*
+ * R3F measures this element to size its drawing buffer, and it only mounts the
+ * renderer once that measurement is non-zero. A height derived purely from
+ * `aspect-ratio` on a `width: 100%` box can be observed as zero on the first
+ * pass, and R3F then never retries — the canvas sits at its default 300x150 and
+ * the frame shows through as a black rectangle.
+ *
+ * An explicit height avoids the race entirely. The inner div is R3F's own
+ * wrapper, pinned to fill. Nothing here sizes the canvas itself: R3F owns those
+ * attributes, and `!important` overrides on them desynchronise the CSS size from
+ * the drawing buffer.
+ */
+.pool {
+  position: relative;
+  width: 100%;
+  height: clamp(320px, 46vh, 560px);
+}
+.pool > div { position: absolute; inset: 0; }
+.pool canvas { display: block; }
+
+.window-label {
+  position: absolute;
+  left: 0.9rem;
+  bottom: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.7rem;
+  background: rgba(12, 20, 26, 0.66);
+  backdrop-filter: blur(3px);
+  border-left: 2px solid var(--accent-glow);
+  max-width: 32ch;
+}
+.window-label strong { font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: #dcefff; }
+.window-label span { font-size: 0.7rem; line-height: 1.4; color: #9dbdd4; }
+
+/* ── Strip chart ──────────────────────────────────────────────────────── */
+.chart {
+  border: 1px solid var(--face-edge);
+  background: linear-gradient(var(--face), #e4e0cf);
+  box-shadow: 0 2px 6px rgba(60, 55, 40, 0.14);
+}
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--face-edge);
+}
+.chart-head h2 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.chart-note { font-size: 0.66rem; color: var(--ink-dim); letter-spacing: 0.05em; }
+.chart-canvas { display: block; width: 100%; height: 170px; }
+
+/* ── Instrument panel ─────────────────────────────────────────────────── */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0.55rem;
+  background: var(--enamel-deep);
+  border: 1px solid var(--bezel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 6px rgba(60, 55, 40, 0.16);
+}
+
+.panel-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 1px; }
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.6rem;
+  background: linear-gradient(var(--face), #e2dece);
+  border: 1px solid var(--face-edge);
+  min-width: 0;
+}
+.readout--wide { grid-column: span 2; }
+
+.readout-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.readout-value {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  transition: color 200ms ease;
+}
+.readout--wide .readout-value { font-size: 1.35rem; }
+.readout-unit { font-style: normal; font-size: 0.7em; color: var(--ink-dim); margin-left: 0.25em; }
+
+/* Alarm states. Colour alone is never the only signal — the value itself is
+   what changed, and the label stays readable either way. */
+.readout[data-status='alarm'] { background: linear-gradient(#f7e2dc, #efd2c9); border-color: #c98b78; }
+.readout[data-status='alarm'] .readout-value { color: var(--alarm); }
+.readout[data-status='live'] .readout-value { color: var(--live); }
+
+.panel-row--time { grid-template-columns: 1fr; }
+
+/* ── Reactivity bars ──────────────────────────────────────────────────── */
+.bars {
+  padding: 0.75rem 0.85rem 0.85rem;
+  background: linear-gradient(var(--face), #e4e0cf);
+  border: 1px solid var(--face-edge);
+  box-shadow: 0 2px 6px rgba(60, 55, 40, 0.14);
+}
+.bars-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.6rem; }
+.bars-head h2 { margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+.bars-scale { font-size: 0.64rem; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+
+.bar {
+  display: grid;
+  grid-template-columns: 6.6rem 1fr 3.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.18rem 0;
+}
+.bar-label { font-size: 0.68rem; letter-spacing: 0.03em; color: var(--ink-dim); }
+.bar-track {
+  position: relative;
+  height: 9px;
+  background: rgba(120, 112, 88, 0.16);
+  border: 1px solid rgba(120, 112, 88, 0.24);
+  overflow: hidden;
+}
+/* Bars grow from a centre line, so sign reads as direction rather than needing
+   a minus sign to be noticed. */
+.bar-centre { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(60, 55, 40, 0.4); }
+.bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 50%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--live);
+  will-change: transform;
+}
+.bar-fill[data-sign='neg'] { left: 0; background: var(--alarm); }
+.bar-value { font-family: var(--mono); font-size: 0.72rem; text-align: right; }
+
+.bar--total { margin-top: 0.4rem; padding-top: 0.5rem; border-top: 1px solid var(--face-edge); }
+.bar--total .bar-label { font-weight: 700; color: var(--ink); }
+.bar--total .bar-track { height: 13px; }
+.bar--total .bar-value { font-size: 0.82rem; font-weight: 600; }
+
+.bars-foot { margin: 0.7rem 0 0; font-size: 0.66rem; line-height: 1.5; color: var(--ink-dim); }
+
+/* ── Controls ─────────────────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.85rem;
+  background: var(--enamel-deep);
+  border: 1px solid var(--bezel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.control label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 0.45rem;
+}
+.control label b { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+
+.control input[type='range'] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.control input[type='range']:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.control-hint { margin: 0.45rem 0 0; font-size: 0.65rem; line-height: 1.5; color: var(--ink-dim); }
+.control-hint span { font-family: var(--mono); color: var(--accent); font-weight: 600; }
+
+.control-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+.btn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--ink);
+  background: linear-gradient(var(--face), #ddd8c5);
+  border: 1px solid var(--face-edge);
+  border-bottom-width: 3px;
+  cursor: pointer;
+  transition: transform 90ms ease, background 160ms ease;
+}
+.btn i { font-style: normal; font-size: 0.6rem; font-weight: 400; letter-spacing: 0.02em; text-transform: none; color: var(--ink-dim); }
+.btn:hover:not(:disabled) { background: linear-gradient(#f4f1e5, #e4dfcc); }
+/* Physical travel: a console button moves when you press it. */
+.btn:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 1px; }
+.btn:disabled { opacity: 0.42; cursor: not-allowed; }
+
+.btn--pulse { border-left: 3px solid var(--accent); }
+.btn--scram { border-left: 3px solid var(--alarm); color: var(--alarm); }
+.btn--scram.is-active { background: linear-gradient(#f0d5cd, #e2bdb2); }
+
+.segmented { display: grid; grid-auto-flow: column; gap: 1px; background: var(--face-edge); border: 1px solid var(--face-edge); }
+.segmented button {
+  padding: 0.4rem 0.2rem;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  background: var(--face);
+  border: 0;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.segmented button:hover { background: #f6f3e7; color: var(--ink); }
+.segmented button.is-active { background: var(--accent); color: #f2f8fc; font-weight: 700; }
+
+/* ── Colophon ─────────────────────────────────────────────────────────── */
+.colophon {
+  border-top: 1px solid var(--oak-dark);
+  padding-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+.colophon p { margin: 0; font-size: 0.7rem; line-height: 1.65; color: var(--ink-dim); max-width: 62ch; }
+.colophon strong { color: var(--ink); }
+/* Stated plainly, not buried. PLAN.md section 9 rule 2: a simulation that
+   implies more resolution than it has is worse than one that admits its scope. */
+.colophon-caveat { font-style: italic; }
+
+/* ── Narrow ───────────────────────────────────────────────────────────── */
+@media (max-width: 980px) {
+  .console { grid-template-columns: 1fr; }
+  .masthead { align-items: flex-start; }
+  .masthead-plate { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}
+
+/* The 2D cutaway. Used when WebGL is unavailable — a full view, not a notice. */
+.pool--section { display: block; }
+.section-canvas { display: block; width: 100%; height: 100%; }
+.section-note {
+  position: absolute;
+  right: 0.9rem;
+  top: 0.85rem;
+  margin: 0;
+  max-width: 30ch;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.66rem;
+  line-height: 1.5;
+  color: #9dbdd4;
+  background: rgba(12, 20, 26, 0.66);
+  backdrop-filter: blur(3px);
+  border-right: 2px solid var(--accent-glow);
+  text-align: right;
+}
+
+/* ── View switch ──────────────────────────────────────────────────────────
+   Two ways of looking at the same core. The section is first because it is
+   the one that explains; the render is the one that impresses. */
+.view-switch { display: grid; grid-auto-flow: column; gap: 1px; background: var(--face-edge); border: 1px solid var(--face-edge); }
+.view-switch button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--ink-dim);
+  background: var(--face);
+  border: 0;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.view-switch button i {
+  font-style: normal;
+  font-size: 0.6rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.view-switch button:hover { background: #f6f3e7; color: var(--ink); }
+.view-switch button.is-active { background: var(--accent); color: #f2f8fc; }
+.view-switch button.is-active i { color: rgba(242, 248, 252, 0.75); }
+
+.view-caption { margin: 0; font-size: 0.7rem; line-height: 1.6; color: var(--ink-dim); max-width: 72ch; }
+
+/* ── Startup procedure ────────────────────────────────────────────────────
+   The answer to "how does anyone know what to do here". A reactor startup is
+   genuinely a written procedure, so the guidance is the subject rather than an
+   overlay on it — and each step advances on the state of the REACTOR, never on
+   a click, so criticality cannot be skipped past. */
+.procedure {
+  border: 1px solid var(--face-edge);
+  border-left: 3px solid var(--accent);
+  background: linear-gradient(var(--face), #e6e2d1);
+  box-shadow: 0 2px 6px rgba(60, 55, 40, 0.14);
+}
+.procedure-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--face-edge);
+}
+.procedure-head h2 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.procedure-toggle {
+  font: inherit;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.procedure-toggle:hover { color: var(--accent); }
+
+.procedure-track {
+  display: flex;
+  gap: 3px;
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem 0.8rem 0;
+}
+.procedure-track li {
+  flex: 1;
+  height: 3px;
+  background: rgba(120, 112, 88, 0.25);
+  transition: background 260ms ease;
+}
+.procedure-track li.is-done { background: var(--live); }
+.procedure-track li.is-current { background: var(--accent); }
+
+.procedure-body { padding: 0.7rem 0.8rem 0.85rem; }
+.procedure-count {
+  margin: 0 0 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.procedure-step {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.procedure-action {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--accent);
+}
+.procedure-why { margin: 0; font-size: 0.72rem; line-height: 1.65; color: var(--ink-dim); }
+.procedure-hint {
+  display: block;
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--face-edge);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.procedure-restart {
+  margin-top: 0.7rem;
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: linear-gradient(var(--face), #ddd8c5);
+  border: 1px solid var(--face-edge);
+  border-bottom-width: 3px;
+  cursor: pointer;
+}
+.procedure-restart:active { transform: translateY(2px); border-bottom-width: 1px; }
+
+/* ── Charts side by side ──────────────────────────────────────────────── */
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.onem-canvas { display: block; width: 100%; height: 150px; }
+.chart-foot {
+  margin: 0;
+  padding: 0.55rem 0.75rem 0.7rem;
+  font-size: 0.66rem;
+  line-height: 1.6;
+  color: var(--ink-dim);
+  border-top: 1px solid var(--face-edge);
+}
+
+@media (max-width: 1240px) {
+  .charts { grid-template-columns: 1fr; }
+}
+
+.procedure-nav { display: flex; gap: 0.4rem; margin-top: 0.7rem; }
+.procedure-nav button {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--face-edge);
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease;
+}
+.procedure-nav button:hover:not(:disabled) { color: var(--ink); background: #fff; }
+.procedure-nav button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Reactor picker and sound ─────────────────────────────────────────────
+   Four variants over one simulation. Nothing about the physics is special-cased
+   per reactor — only the numbers differ, which is what makes "these are really
+   four different reactors" true rather than cosmetic. */
+.masthead-controls { display: flex; flex-direction: column; gap: 0.5rem; margin-left: auto; }
+
+.reactor-picker { display: grid; grid-auto-flow: column; gap: 1px; background: var(--face-edge); border: 1px solid var(--face-edge); }
+.reactor-picker button {
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim);
+  background: var(--face);
+  border: 0;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.reactor-picker button:hover { background: #f6f3e7; color: var(--ink); }
+.reactor-picker button.is-active { background: var(--accent); color: #f2f8fc; }
+
+.sound-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--ink-dim);
+  background: linear-gradient(var(--face), #e2dece);
+  border: 1px solid var(--face-edge);
+  cursor: pointer;
+}
+.sound-toggle i { font-style: normal; font-size: 0.56rem; font-weight: 400; letter-spacing: 0.02em; text-transform: none; }
+.sound-toggle.is-active { color: var(--accent); border-color: var(--accent); }
+
+/* ── Trip banner ──────────────────────────────────────────────────────────
+   The most important thing that can happen here, so it interrupts.
+
+   This rule is load-bearing and easy to lose: the UA stylesheet's
+   `[hidden] { display: none }` is overridden by ANY author-level `display`, so
+   `display: flex` below silently defeated the hidden attribute and left an
+   empty trip banner on screen permanently, announcing a trip that had not
+   happened. Anything using [hidden] alongside a display value needs this. */
+.trip[hidden] { display: none !important; }
+
+.trip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 1px;
+  background: linear-gradient(#f6ded6, #ecc7bb);
+  border: 1px solid var(--alarm);
+  border-left-width: 4px;
+}
+.trip-tag {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--alarm);
+}
+.trip strong { font-size: 0.92rem; font-weight: 700; color: #7d2412; }
+.trip-reason { font-size: 0.68rem; line-height: 1.55; color: #6b3a2c; }
+
+/* ── The four rooms ───────────────────────────────────────────────────────
+   Four reactor programmes, four industrial design languages. The console is
+   DOM and SVG, so this costs nothing but a palette — and it gives the project
+   the visual range that a grey-and-blue reactor cannot. */
+
+/* PWR — Westinghouse, 1975. Cream panels, chrome bezels, red pistol-grip scram. */
+:root[data-reactor='pwr'] {
+  --enamel: #ded8c8; --enamel-deep: #b8b09a; --bezel: #9a927e;
+  --oak: #8a6a3f; --oak-dark: #5e4526;
+  --face: #f2ecdb; --face-edge: #bcb198;
+  --ink: #2a241a; --ink-dim: #675e4c;
+  --accent: #9c2a17; --alarm: #b3341c; --live: #2c6b34;
+  --chart-paper: #f6f1e2; --chart-ink: #8a2f1c;
+}
+/* BWR — General Electric, 1980. Cool grey-blue benchboard with an inlaid mimic. */
+:root[data-reactor='bwr'] {
+  --enamel: #ccd3d8; --enamel-deep: #a3adb5; --bezel: #8b959d;
+  --oak: #5d6f7a; --oak-dark: #3d4c55;
+  --face: #e6ebee; --face-edge: #a9b3ba;
+  --ink: #1b2429; --ink-dim: #55636c;
+  --accent: #16607f; --alarm: #a83218; --live: #227048;
+  --chart-paper: #eef2f4; --chart-ink: #1d5c78;
+}
+/* MSRE — Oak Ridge, 1965. Mid-century lab: bakelite, brushed steel, warm grey-green. */
+:root[data-reactor='msre'] {
+  --enamel: #cfd0c2; --enamel-deep: #a6a897; --bezel: #8d8f7e;
+  --oak: #7d6a4a; --oak-dark: #514532;
+  --face: #ebe9d9; --face-edge: #b2b09b;
+  --ink: #22261c; --ink-dim: #5b6050;
+  --accent: #6a6f22; --alarm: #a3421a; --live: #2f6b3c;
+  --chart-paper: #f1efdf; --chart-ink: #6a5a1c;
+}
+
+/* The palette shifts rather than snaps, so switching reactors reads as walking
+   into a different room instead of as a page reload. */
+body, .panel, .readout, .chart, .bars, .controls, .procedure,
+.masthead-plate, .view-switch button, .reactor-picker button {
+  transition: background-color 420ms ease, border-color 420ms ease, color 420ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  body, .panel, .readout, .chart, .bars, .controls, .procedure { transition: none; }
+}
+
+/* ── Narrative ────────────────────────────────────────────────────────────
+   The second axis (PLAN.md 6). Scrolling moves the argument; the reactor keeps
+   integrating regardless, and every figure below is read live from it. */
+.narrative {
+  max-width: 46rem;
+  margin: clamp(3rem, 8vh, 6rem) auto 0;
+  padding: 0 clamp(1rem, 4vw, 2rem);
+}
+.narrative-lede {
+  margin: 0 0 clamp(2.5rem, 6vh, 4rem);
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--rule, rgba(60, 55, 40, 0.2));
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+.narrative-section { margin-bottom: clamp(3rem, 8vh, 5.5rem); }
+.narrative-eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.narrative-title {
+  margin: 0 0 0.9rem;
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.narrative-body {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.75;
+  color: var(--ink-dim);
+  text-wrap: pretty;
+}
+.narrative-live {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  margin: 1.4rem 0 0;
+  background: var(--face-edge);
+  border: 1px solid var(--face-edge);
+}
+.narrative-live > div {
+  padding: 0.55rem 0.7rem;
+  background: linear-gradient(var(--face), #e4e0cf);
+}
+.narrative-live dt {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.narrative-live dd {
+  margin: 0.2rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+/* ── In the world ─────────────────────────────────────────────────────────
+   Real operating statistics, deliberately set apart from the computed physics
+   above — see the caveat rule below, which is the point of the section. */
+.world { max-width: 46rem; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2rem); }
+
+.world-table { margin-top: 1.6rem; border-top: 1px solid var(--face-edge); }
+.world-head,
+.world-row {
+  display: grid;
+  grid-template-columns: 1fr 3.2rem 8.5rem;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--face-edge);
+}
+.world-head {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.world-head span:nth-child(2) { text-align: right; }
+
+.world-row { position: relative; }
+.world-name { font-size: 0.84rem; font-weight: 600; color: var(--ink); }
+.world-name i {
+  display: block;
+  font-style: normal;
+  font-size: 0.66rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  margin-top: 0.1rem;
+}
+.world-units {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink);
+}
+.world-bar { position: relative; display: flex; align-items: center; gap: 0.5rem; }
+.world-bar > span {
+  display: block;
+  flex: 1;
+  height: 8px;
+  background: var(--accent);
+  transform-origin: left center;
+}
+.world-bar b {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  min-width: 2.4rem;
+  text-align: right;
+}
+/* Faint underlay proportional to fleet size, so the two quantities can be
+   compared without a second chart. */
+.world-scale {
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 2px;
+  background: var(--ink-dim);
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+/* The caveat is styled to be read, not skipped. Remembered figures sitting
+   silently beside validated ones would borrow credibility they have not
+   earned — PLAN.md section 9. */
+.world-caveat {
+  margin: 1.4rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid var(--alarm);
+  background: rgba(179, 52, 28, 0.06);
+  font-size: 0.72rem;
+  line-height: 1.65;
+  color: var(--ink-dim);
+}
+.world-caveat strong { color: var(--ink); }
+
+.people { margin: 1.4rem 0 1.6rem; display: grid; gap: 1.1rem; }
+.person dt {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.person dt i {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-left: 0.6rem;
+}
+.person dd {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 620px) {
+  .world-head, .world-row { grid-template-columns: 1fr 2.6rem; }
+  .world-head span:nth-child(3), .world-bar { grid-column: 1 / -1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE ROOM RESPONDS TO THE REACTOR
+
+   One number — `--glow`, 0 at cold shutdown, 1 at power — written to the root
+   every frame by glow.ts. Every colour below mixes against it, so the palette
+   cools and darkens toward Cherenkov blue as the core comes up. Nobody chooses
+   it; the reactor does it to the room.
+
+   Registering the property is load-bearing: without an @property declaration
+   `--glow` is an unparsed token, and `calc(var(--glow) * 55%)` silently fails
+   in every rule that uses it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@property --glow { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+:root {
+  /* Where the room travels to at full power. */
+  --glow-deep: #071a2b;
+}
+:root { --glow-mid: #0d3350; --glow-tint: #123f63; }
+
+/* oklab, not srgb: mixing warm sage toward deep blue in sRGB passes through a
+   dead grey at the midpoint. oklab keeps the transit chromatic. */
+body {
+  background-color: var(--room-bg, var(--enamel));
+  background-image:
+    radial-gradient(70rem 46rem at 28% 8%,
+      color-mix(in oklab, rgba(255,255,246,0.85), transparent calc(var(--glow) * 70%)) 0%,
+      transparent 62%),
+    radial-gradient(90rem 70rem at 62% 42%,
+      color-mix(in oklab, transparent, #1d7fd6 calc(var(--glow) * 26%)) 0%,
+      transparent 68%);
+}
+
+/*
+ * The room, driven by resolved colours from glow.ts.
+ *
+ * These are plain rgb() values recomputed each frame, not color-mix expressions.
+ * See the note in glow.ts for why: the CSS route applied its rules but would not
+ * re-resolve the mix as --glow changed, while text colours using the identical
+ * expression tracked correctly. One computed source of truth beats a cascade
+ * nobody can fully predict.
+ */
+.panel, .controls {
+  background-image: none;
+  background-color: var(--room-panel, var(--enamel-deep));
+}
+.readout, .chart, .bars, .procedure, .masthead-plate, .narrative-live > div, .hero {
+  background-image: none;
+  background-color: var(--room-face, var(--face));
+  border-color: var(--room-edge, var(--face-edge));
+}
+.readout-value, .hero-value, .bar--total .bar-value, .plate-name,
+.narrative-live dd, .procedure-step, .masthead-title h1, .narrative-title,
+.world-name, .chart-head h2, .procedure-head h2, .bars-head h2 {
+  color: var(--room-ink, var(--ink));
+}
+.readout-label, .bar-label, .chart-note, .procedure-why, .hero-sub,
+.narrative-body, .world-name i, .person dd, .control-hint, .bars-foot {
+  color: var(--room-dim, var(--ink-dim));
+}
+.masthead { border-bottom-color: var(--room-edge, var(--oak-dark)); }
+:root { --chart-paper: var(--room-paper, #f3f0e4); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO POWER
+   The number the page exists to produce, sized like it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1.1rem 1.2rem 1.2rem;
+  margin-bottom: 1px;
+  background-image: none;
+  background-color: var(--room-face, var(--face));
+  border: 1px solid var(--face-edge);
+  border-left: 4px solid var(--accent);
+}
+.hero-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--ink-dim), #8fc0e0 calc(var(--glow) * 82%));
+}
+.hero-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  /* The whole point. Six times the surrounding type, so the eye lands here
+     first and everything else can stay small. */
+  font-size: clamp(2.6rem, 6.5vw, 4.4rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.hero-unit {
+  font-size: 0.28em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+.hero-sub {
+  margin-top: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.hero[data-status='live'] { border-left-color: var(--live); }
+.hero[data-status='alarm'] { border-left-color: var(--alarm); }
+.hero[data-status='alarm'] .hero-value { color: var(--alarm); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LESS CHROME
+   Every tile had a border AND a gradient AND a shadow — fifteen competing
+   rectangles. Hairlines and air instead.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.readout {
+  border: 0;
+  border-top: 1px solid color-mix(in oklab, var(--face-edge), #2f6f9e calc(var(--glow) * 60%));
+  padding: 0.7rem 0.8rem;
+  box-shadow: none;
+}
+.panel { gap: 0; padding: 0.7rem; box-shadow: none; }
+.panel-row { gap: 0; }
+.bars, .chart, .procedure { box-shadow: none; }
+.controls { box-shadow: none; padding: 1rem; gap: 1.1rem; }
+.chart-canvas { height: 190px; }
+
+/* Air. 0.5rem everywhere read as cramped; padding is free and it reads as
+   confidence. */
+.bars { padding: 1rem 1.1rem 1.1rem; }
+.procedure-body { padding: 0.9rem 1rem 1.05rem; }
+.chart-head, .procedure-head { padding: 0.65rem 0.9rem; }
+.console-side { gap: 1.1rem; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROOM PALETTE — final application.
+
+   Placed last deliberately. Earlier `.readout` and `body` declarations kept
+   winning the background even after the longhand rewrite, and chasing which one
+   through a 1000-line sheet was costing more than it was worth. Last rule of
+   equal specificity wins, so applying the resolved colours here ends the
+   argument. The values themselves come from glow.ts.
+   ═══════════════════════════════════════════════════════════════════════════ */
+body {
+  background-color: var(--room-bg, #d8dcd0);
+}
+.readout,
+.chart,
+.bars,
+.procedure,
+.masthead-plate,
+.hero,
+.narrative-live > div {
+  background-image: none;
+  background-color: var(--room-face, #ece9dc);
+  border-color: var(--room-edge, #b4ad96);
+}
+.panel,
+.controls {
+  background-image: none;
+  background-color: var(--room-panel, #a9b19f);
+}

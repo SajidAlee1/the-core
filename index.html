@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#d8dcd0" />
+
+    <!--
+      Search discoverability.
+
+      "The Core" alone is unfindable — it is a 2003 film, a Marvel location and
+      a great many gyms. Nobody searching for this would type it, so the title
+      leads with the brand and then says plainly what the thing IS, in the words
+      people actually use: "nuclear reactor simulator".
+
+      The description carries the specific terms that bring the right visitor
+      rather than a curious one: point kinetics, criticality, xenon, TRIGA.
+      Someone searching those is exactly who this was built for.
+    -->
+    <title>The Core — Nuclear Reactor Simulator | Real-Time Point Kinetics</title>
+    <meta
+      name="description"
+      content="An interactive nuclear reactor simulator. Take a TRIGA, PWR, BWR or molten-salt reactor from cold shutdown to criticality and watch it regulate itself. Six-group point kinetics solved in real time, validated against the inhour equation — xenon poisoning, Doppler feedback, decay heat and reactor protection, all computed rather than scripted."
+    />
+    <meta
+      name="keywords"
+      content="nuclear reactor simulator, reactor physics, point kinetics, criticality, approach to critical, 1/M plot, xenon poisoning, Doppler coefficient, decay heat, TRIGA, PWR, BWR, molten salt reactor, control rods, scram, reactor startup"
+    />
+    <link rel="canonical" href="https://example.com/" />
+
+    <!-- Link previews. Without these a shared link is a bare URL, and this is
+         a page people are likely to send to someone else. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="The Core — Nuclear Reactor Simulator" />
+    <meta
+      property="og:description"
+      content="Take a reactor from cold shutdown to criticality. Six-group point kinetics solved in real time — the neutron population, the xenon, the decay heat and the Cherenkov glow are all computed, not scripted."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="The Core — Nuclear Reactor Simulator" />
+    <meta
+      name="twitter:description"
+      content="Cold shutdown to criticality, simulated in real time. Validated against the inhour equation to within 0.05%."
+    />
+
+    <!--
+      Structured data. Tells a search engine this is an interactive educational
+      tool rather than an article, which is what decides whether it appears for
+      "reactor simulator" instead of only for "reactor".
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "The Core",
+        "alternateName": "The Core — Nuclear Reactor Simulator",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any modern web browser",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "An interactive nuclear reactor simulator solving the six-group point kinetics equations in real time. Covers approach to criticality, the 1/M plot, Doppler feedback, xenon-135 poisoning, decay heat and reactor protection across four reactor types.",
+        "educationalUse": "simulation",
+        "learningResourceType": "interactive simulation",
+        "about": [
+          { "@type": "Thing", "name": "Nuclear reactor physics" },
+          { "@type": "Thing", "name": "Point kinetics" },
+          { "@type": "Thing", "name": "Criticality" }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
